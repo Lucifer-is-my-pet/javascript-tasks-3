@@ -1,16 +1,37 @@
 'use strict';
 
+var STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+var ARGUMENT_NAMES = /([^\s,]+)/g;
+function getParamNames(func) {
+    var fnStr = func.toString().replace(STRIP_COMMENTS, '');
+    var result = fnStr.slice(fnStr.indexOf('(')+1, fnStr.indexOf(')')).match(ARGUMENT_NAMES);
+    if(result === null)
+        result = [];
+    return result;
+}
+
 // Метод, который будет выполнять операции над коллекцией один за другим
 module.exports.query = function (collection /* операторы через запятую */) {
     if (collection.length === 0) {
         console.error('Телефонная книга пуста!');
         return;
     }
+    if (typeof collection !== 'object') {
+        console.error('Нет телефонной книги!');
+        return;
+    }
+    for (var i = 1; i < arguments.length; i++) {
+        if (typeof arguments[i] !== 'function') {
+            console.error('Аргумент', i + 1, 'не оператор!');
+            return;
+        }
+
+    }
     var resultCollection = collection;
     for (var i = 1; i < arguments.length; i++) {
         resultCollection = arguments[i](resultCollection);
     }
-    console.log(resultCollection);
+    //console.log(resultCollection);
     return resultCollection;
 };
 
@@ -106,8 +127,8 @@ module.exports.sortBy = function (param, order) {
         var resultCollection = [];
         var minElementIndex = 0;
         var minElement = collection[0];
-        var unchangeableLen = collection.length;
-        for (var i = 0; i < unchangeableLen; i++) {
+        var initialLength = collection.length;
+        for (var i = 0; i < initialLength; i++) {
             minElementIndex = findMin(collection, param);
             minElement = collection[minElementIndex];
             resultCollection.push(minElement);
@@ -152,13 +173,13 @@ module.exports.and = function () {
         if (!operators.length) {
             return '';
         }
-        var tempCollection1 = operators[0](collection);
-        var arrOfIntersected = new Array(tempCollection1.length);
+        var firstCollection = operators[0](collection);
+        var arrOfIntersected = new Array(firstCollection.length);
         for (var i = 1; i < operators.length; i++) {
-            var tempCollection2 = operators[i](collection);
-            for (var j in tempCollection1) {
-                for (var k in tempCollection2) {
-                    if (areEqual(tempCollection1[j], tempCollection2[k])) {
+            var secondCollection = operators[i](collection);
+            for (var j in firstCollection) {
+                for (var k in secondCollection) {
+                    if (areEqual(firstCollection[j], secondCollection[k])) {
                         arrOfIntersected[j] = true;
                         break;
                     }
@@ -168,7 +189,7 @@ module.exports.and = function () {
         var resultCollection = [];
         for (var i in arrOfIntersected) {
             if (arrOfIntersected[i]) {
-                resultCollection.push(tempCollection1[i]);
+                resultCollection.push(firstCollection[i]);
             }
         }
         return resultCollection;
